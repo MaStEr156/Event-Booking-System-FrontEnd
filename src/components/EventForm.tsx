@@ -1,216 +1,253 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useEvents } from '../context/EventContext';
-import { ArrowLeftIcon, SaveIcon } from 'lucide-react';
-interface EventFormData {
-  name: string;
-  description: string;
-  category: string;
-  date: string;
-  venue: string;
-  price: string;
-  imageUrl: string;
+import React, { useState, useEffect } from 'react';
+import { useAdmin } from '../context/AdminContext';
+import { Event, Category } from '../services/eventService';
+import eventService from '../services/eventService';
+
+interface EventFormProps {
+  event: Event | null;
+  onClose: () => void;
 }
-const EventForm = () => {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
-  const navigate = useNavigate();
-  const {
-    getEvent,
-    addEvent,
-    updateEvent
-  } = useEvents();
-  const isEditMode = Boolean(id);
-  const [formData, setFormData] = useState<EventFormData>({
-    name: '',
-    description: '',
-    category: '',
-    date: '',
-    venue: '',
-    price: '',
-    imageUrl: ''
-  });
-  const [errors, setErrors] = useState<Partial<EventFormData>>({});
-  // If editing, load event data
+
+const EventForm: React.FC<EventFormProps> = ({ event, onClose }) => {
+  const { addEvent, updateEvent } = useAdmin();
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [venue, setVenue] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [price, setPrice] = useState<number>(0);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (isEditMode && id) {
-      const event = getEvent(id);
-      if (event) {
-        setFormData({
-          name: event.name,
-          description: event.description,
-          category: event.category,
-          date: event.date,
-          venue: event.venue,
-          price: event.price.toString(),
-          imageUrl: event.imageUrl
-        });
-      } else {
-        navigate('/admin');
+    const fetchCategories = async () => {
+      try {
+        const categoriesData = await eventService.getAllCategories();
+        setCategories(categoriesData);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
       }
-    }
-  }, [id, isEditMode, getEvent, navigate]);
-  const validateForm = (): boolean => {
-    const newErrors: Partial<EventFormData> = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Event name is required';
-    }
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    if (!formData.category.trim()) {
-      newErrors.category = 'Category is required';
-    }
-    if (!formData.date) {
-      newErrors.date = 'Date is required';
-    }
-    if (!formData.venue.trim()) {
-      newErrors.venue = 'Venue is required';
-    }
-    if (!formData.price.trim()) {
-      newErrors.price = 'Price is required';
-    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
-      newErrors.price = 'Price must be a valid positive number';
-    }
-    if (!formData.imageUrl.trim()) {
-      newErrors.imageUrl = 'Image URL is required';
-    } else if (!formData.imageUrl.match(/^https?:\/\/.+/i)) {
-      newErrors.imageUrl = 'Please enter a valid URL starting with http:// or https://';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const {
-      name,
-      value
-    } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when field is edited
-    if (errors[name as keyof EventFormData]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
-  };
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
-    const eventData = {
-      name: formData.name,
-      description: formData.description,
-      category: formData.category,
-      date: formData.date,
-      venue: formData.venue,
-      price: parseFloat(formData.price),
-      imageUrl: formData.imageUrl
     };
-    if (isEditMode && id) {
-      updateEvent(id, eventData);
+
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title);
+      setDescription(event.description);
+      setEventDate(new Date(event.eventDate).toISOString().split('T')[0]);
+      setVenue(event.venue);
+      setCategoryId(event.categoryId);
+      setPrice(event.price);
+      if (event.imageUrl) {
+        setImagePreview(event.fullImageUrl);
+      }
     } else {
-      addEvent(eventData);
+      // Reset form when creating new event
+      setTitle('');
+      setDescription('');
+      setEventDate('');
+      setVenue('');
+      setCategoryId('');
+      setPrice(0);
+      setImage(null);
+      setImagePreview('');
     }
-    navigate('/admin');
+  }, [event]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
-  return <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate('/admin')} className="flex items-center gap-1 text-gray-600 hover:text-gray-800">
-          <ArrowLeftIcon className="h-5 w-5" />
-          <span>Back to Dashboard</span>
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800">
-          {isEditMode ? 'Edit Event' : 'Create New Event'}
-        </h1>
-      </div>
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="col-span-2">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Event Name*
-              </label>
-              <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (!image && !event) {
+        throw new Error('Image is required for new events');
+      }
+
+      const eventData = {
+        Title: title,
+        Description: description,
+        EventDate: new Date(eventDate).toISOString(),
+        Venue: venue,
+        CategoryId: categoryId,
+        Price: price,
+        Image: image // Only include image if it's a new event or if it was changed
+      };
+
+      if (event) {
+        await updateEvent(event.id, eventData);
+      } else {
+        await addEvent(eventData);
+      }
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save event');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">
+        {event ? 'Edit Event' : 'Add Event'}
+      </h2>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+            maxLength={100}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            rows={4}
+            required
+            maxLength={500}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="eventDate" className="block text-sm font-medium text-gray-700">
+            Date
+          </label>
+          <input
+            type="date"
+            id="eventDate"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="venue" className="block text-sm font-medium text-gray-700">
+            Venue
+          </label>
+          <input
+            type="text"
+            id="venue"
+            value={venue}
+            onChange={(e) => setVenue(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+            Price
+          </label>
+          <input
+            type="number"
+            id="price"
+            value={price}
+            onChange={(e) => setPrice(parseFloat(e.target.value))}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+            min="0"
+            step="0.01"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+            Category
+          </label>
+          <select
+            id="category"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          >
+            <option value="">Select a category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="image" className="block text-sm font-medium text-gray-700">
+            Image {!event && <span className="text-red-500">*</span>}
+          </label>
+          <input
+            type="file"
+            id="image"
+            onChange={handleImageChange}
+            className="mt-1 block w-full"
+            accept="image/*"
+            required={!event}
+          />
+          {imagePreview && (
+            <div className="mt-2">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-40 w-full object-cover rounded-md"
+              />
             </div>
-            <div className="col-span-2">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description*
-              </label>
-              <textarea id="description" name="description" rows={4} value={formData.description} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.description && <p className="mt-1 text-sm text-red-600">
-                  {errors.description}
-                </p>}
-            </div>
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                Category*
-              </label>
-              <select id="category" name="category" value={formData.category} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.category ? 'border-red-500' : 'border-gray-300'}`}>
-                <option value="">Select a category</option>
-                <option value="Music">Music</option>
-                <option value="Technology">Technology</option>
-                <option value="Sports">Sports</option>
-                <option value="Food">Food</option>
-                <option value="Art">Art</option>
-                <option value="Business">Business</option>
-                <option value="Education">Education</option>
-                <option value="Entertainment">Entertainment</option>
-              </select>
-              {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
-            </div>
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                Date*
-              </label>
-              <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.date ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
-            </div>
-            <div>
-              <label htmlFor="venue" className="block text-sm font-medium text-gray-700 mb-1">
-                Venue*
-              </label>
-              <input type="text" id="venue" name="venue" value={formData.venue} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.venue ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.venue && <p className="mt-1 text-sm text-red-600">{errors.venue}</p>}
-            </div>
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                Price* ($)
-              </label>
-              <input type="text" id="price" name="price" value={formData.price} onChange={handleChange} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-            </div>
-            <div className="col-span-2">
-              <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                Image URL*
-              </label>
-              <input type="text" id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="https://example.com/image.jpg" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.imageUrl ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.imageUrl && <p className="mt-1 text-sm text-red-600">{errors.imageUrl}</p>}
-              {formData.imageUrl && <div className="mt-2">
-                  <p className="text-sm text-gray-600 mb-1">Image Preview:</p>
-                  <img src={formData.imageUrl} alt="Event preview" className="h-40 w-full object-cover rounded-md" onError={e => {
-                ;
-                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=Invalid+Image+URL';
-              }} />
-                </div>}
-            </div>
-          </div>
-          <div className="mt-8 flex justify-end">
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium flex items-center gap-2 transition-colors duration-200">
-              <SaveIcon className="h-5 w-5" />
-              <span>{isEditMode ? 'Update Event' : 'Create Event'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>;
+          )}
+        </div>
+
+        {error && (
+          <div className="text-red-600 text-sm">{error}</div>
+        )}
+
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Saving...' : event ? 'Update' : 'Create'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 };
+
 export default EventForm;

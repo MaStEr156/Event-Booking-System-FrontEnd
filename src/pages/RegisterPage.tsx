@@ -21,7 +21,17 @@ const RegisterPage = () => {
       return;
     }
     try {
-      await register(name, email, password);
+      const [firstName, ...lastNameParts] = name.split(' ');
+      const lastName = lastNameParts.join(' ');
+      
+      await register({
+        firstName,
+        lastName,
+        email,
+        userName: email,
+        password,
+        confirmPassword
+      });
       navigate('/');
     } catch (err) {
       setError((err as Error).message);

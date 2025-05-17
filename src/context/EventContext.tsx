@@ -1,148 +1,152 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
-import { useAuth } from './AuthContext';
-interface Event {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  date: string;
-  venue: string;
-  price: number;
-  imageUrl: string;
-}
-interface Booking {
-  id: string;
-  userId: string;
-  eventId: string;
-  bookedAt: string;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import eventService, { Event, Category } from '../services/eventService';
+
 interface EventContextType {
   events: Event[];
-  bookings: Booking[];
-  addEvent: (event: Omit<Event, 'id'>) => void;
-  updateEvent: (id: string, event: Partial<Event>) => void;
-  deleteEvent: (id: string) => void;
-  bookEvent: (eventId: string) => void;
+  categories: Category[];
+  loading: boolean;
+  error: string | null;
+  refreshEvents: () => Promise<void>;
+  bookEvent: (eventId: string) => Promise<void>;
   isEventBooked: (eventId: string) => boolean;
-  getEvent: (id: string) => Event | undefined;
+  deleteEvent: (eventId: string) => Promise<void>;
+  softDeleteEvent: (eventId: string) => Promise<void>;
+  getEventById: (id: string) => Promise<Event>;
+  addCategory: (name: string) => Promise<void>;
+  updateCategory: (id: string, name: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 }
+
 const EventContext = createContext<EventContextType | undefined>(undefined);
-export const EventProvider: React.FC<{
-  children: React.ReactNode;
-}> = ({
-  children
-}) => {
+
+export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const {
-    user
-  } = useAuth();
-  // Initialize with sample data if empty
-  useEffect(() => {
-    const storedEvents = localStorage.getItem('events');
-    if (!storedEvents) {
-      const sampleEvents: Event[] = [{
-        id: '1',
-        name: 'Summer Music Festival',
-        description: 'A three-day music festival featuring top artists from around the world.',
-        category: 'Music',
-        date: '2023-07-15',
-        venue: 'Central Park',
-        price: 149.99,
-        imageUrl: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-      }, {
-        id: '2',
-        name: 'Tech Conference 2023',
-        description: 'Join industry leaders and innovators for a day of tech talks and networking.',
-        category: 'Technology',
-        date: '2023-08-22',
-        venue: 'Convention Center',
-        price: 299.99,
-        imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-      }, {
-        id: '3',
-        name: 'Food & Wine Expo',
-        description: 'Sample delicious food and wine from top chefs and wineries.',
-        category: 'Food',
-        date: '2023-09-10',
-        venue: 'Grand Hotel',
-        price: 75.0,
-        imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-      }, {
-        id: '4',
-        name: 'Marathon 2023',
-        description: 'Annual city marathon with routes for all skill levels.',
-        category: 'Sports',
-        date: '2023-10-05',
-        venue: 'Downtown',
-        price: 50.0,
-        imageUrl: 'https://images.unsplash.com/photo-1513593771513-7b58b6c4af38?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-      }];
-      setEvents(sampleEvents);
-      localStorage.setItem('events', JSON.stringify(sampleEvents));
-    } else {
-      setEvents(JSON.parse(storedEvents));
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refreshEvents = async () => {
+    try {
+      setLoading(true);
+      const [eventsData, categoriesData] = await Promise.all([
+        eventService.getAllEvents(),
+        eventService.getAllCategories()
+      ]);
+      setEvents(eventsData);
+      setCategories(categoriesData);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load events');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    const storedBookings = localStorage.getItem('bookings');
-    if (storedBookings) {
-      setBookings(JSON.parse(storedBookings));
+  };
+
+  const bookEvent = async (eventId: string) => {
+    try {
+      await eventService.bookEvent(eventId);
+      await refreshEvents();
+    } catch (err) {
+      console.error('Failed to book event:', err);
+      throw err;
     }
-  }, []);
-  // Save events and bookings to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('events', JSON.stringify(events));
-  }, [events]);
-  useEffect(() => {
-    localStorage.setItem('bookings', JSON.stringify(bookings));
-  }, [bookings]);
-  const addEvent = (event: Omit<Event, 'id'>) => {
-    const newEvent = {
-      ...event,
-      id: `event-${Date.now()}`
-    };
-    setEvents([...events, newEvent]);
   };
-  const updateEvent = (id: string, updatedEventData: Partial<Event>) => {
-    setEvents(events.map(event => event.id === id ? {
-      ...event,
-      ...updatedEventData
-    } : event));
-  };
-  const deleteEvent = (id: string) => {
-    setEvents(events.filter(event => event.id !== id));
-    // Also delete related bookings
-    setBookings(bookings.filter(booking => booking.eventId !== id));
-  };
-  const bookEvent = (eventId: string) => {
-    if (!user) return;
-    const newBooking = {
-      id: `booking-${Date.now()}`,
-      userId: user.id,
-      eventId,
-      bookedAt: new Date().toISOString()
-    };
-    setBookings([...bookings, newBooking]);
-  };
+
   const isEventBooked = (eventId: string) => {
-    if (!user) return false;
-    return bookings.some(booking => booking.eventId === eventId && booking.userId === user.id);
+    // This is a placeholder - implement actual booking check logic
+    return false;
   };
-  const getEvent = (id: string) => {
-    return events.find(event => event.id === id);
+
+  const deleteEvent = async (eventId: string) => {
+    try {
+      await eventService.deleteEvent(eventId);
+      await refreshEvents();
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      throw err;
+    }
   };
-  return <EventContext.Provider value={{
+
+  const softDeleteEvent = async (eventId: string) => {
+    try {
+      await eventService.softDeleteEvent(eventId);
+      await refreshEvents();
+    } catch (err) {
+      console.error('Failed to archive event:', err);
+      throw err;
+    }
+  };
+
+  const getEventById = async (id: string) => {
+    try {
+      const event = await eventService.getEventById(id);
+      return event;
+    } catch (err) {
+      console.error('Failed to get event by ID:', err);
+      throw err;
+    }
+  };
+
+  const addCategory = async (name: string) => {
+    try {
+      const newCategory = await eventService.addCategory({ name });
+      setCategories(prevCategories => [...prevCategories, newCategory]);
+    } catch (err) {
+      console.error('Failed to add category:', err);
+      throw err;
+    }
+  };
+
+  const updateCategory = async (id: string, name: string) => {
+    try {
+      await eventService.updateCategory(id, { name });
+      setCategories(prevCategories =>
+        prevCategories.map(category =>
+          category.id === id ? { ...category, name } : category
+        )
+      );
+    } catch (err) {
+      console.error('Failed to update category:', err);
+      throw err;
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      await eventService.deleteCategory(id);
+      setCategories(prevCategories =>
+        prevCategories.filter(category => category.id !== id)
+      );
+    } catch (err) {
+      console.error('Failed to delete category:', err);
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    refreshEvents();
+  }, []);
+
+  const value: EventContextType = {
     events,
-    bookings,
-    addEvent,
-    updateEvent,
-    deleteEvent,
+    categories,
+    loading,
+    error,
+    refreshEvents,
     bookEvent,
     isEventBooked,
-    getEvent
-  }}>
-      {children}
-    </EventContext.Provider>;
+    deleteEvent,
+    softDeleteEvent,
+    getEventById,
+    addCategory,
+    updateCategory,
+    deleteCategory
+  };
+
+  return <EventContext.Provider value={value}>{children}</EventContext.Provider>;
 };
+
 export const useEvents = () => {
   const context = useContext(EventContext);
   if (context === undefined) {

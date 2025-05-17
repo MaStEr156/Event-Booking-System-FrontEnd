@@ -23,11 +23,12 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     try {
-      await login(email, password);
-      navigate(from, {
-        replace: true
-      });
+      console.log('LoginPage: Starting login process');
+      await login({ email, password });
+      console.log('LoginPage: Login successful, navigating to:', from);
+      navigate(from, { replace: true });
     } catch (err) {
+      console.error('LoginPage: Login failed:', err);
       setError((err as Error).message);
     }
   };
@@ -67,15 +68,6 @@ const LoginPage = () => {
           <Link to="/register" className="text-blue-600 hover:text-blue-800 font-medium">
             Sign up
           </Link>
-        </p>
-      </div>
-      <div className="mt-8 p-4 bg-blue-50 rounded-md">
-        <p className="text-sm text-gray-700">
-          <strong>Demo credentials:</strong>
-          <br />
-          Admin: admin@example.com / admin
-          <br />
-          Or register a new user account
         </p>
       </div>
     </div>;

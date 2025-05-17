@@ -1,104 +1,170 @@
-import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useEvents } from '../context/EventContext';
-import { useAuth } from '../context/AuthContext';
-import { CalendarIcon, MapPinIcon, TagIcon, DollarSignIcon, ArrowLeftIcon } from 'lucide-react';
-const EventDetailsPage = () => {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useEvents } from '@/context/EventContext';
+import { useAuth } from '@/context/AuthContext';
+import { Event } from '@/services/eventService';
+import { ArrowLeftIcon, CalendarIcon, MapPinIcon, TagIcon, CheckCircleIcon } from 'lucide-react';
+import eventService from '@/services/eventService';
+import { toast } from 'react-hot-toast';
+
+const EventDetailsPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const {
-    getEvent,
-    bookEvent,
-    isEventBooked
-  } = useEvents();
-  const {
-    user
-  } = useAuth();
-  const event = getEvent(id || '');
-  if (!event) {
-    return <div className="text-center py-20">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-          Event not found
-        </h2>
-        <Link to="/" className="text-blue-600 hover:text-blue-800">
-          Return to home page
-        </Link>
-      </div>;
-  }
-  const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  const formattedPrice = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(event.price);
-  const handleBookEvent = () => {
-    if (!user) {
-      navigate('/login');
-      return;
+  const { getEventById, bookEvent } = useEvents();
+  const { user } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isBooking, setIsBooking] = useState(false);
+  const [isBooked, setIsBooked] = useState(false);
+  const [isCheckingBooking, setIsCheckingBooking] = useState(true);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        const eventData = await getEventById(id);
+        setEvent(eventData);
+      } catch (err) {
+        setError('Failed to load event details');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const checkBookingStatus = async () => {
+      if (!user || !id) {
+        setIsCheckingBooking(false);
+        return;
+      }
+
+      try {
+        console.log('Checking booking status for event:', id);
+        const bookings = await eventService.getUserBookings();
+        console.log('User bookings:', bookings);
+        const hasBooked = bookings.some(booking => booking.eventId === id);
+        console.log('Has booked:', hasBooked);
+        setIsBooked(hasBooked);
+      } catch (err) {
+        console.error('Failed to check booking status:', err);
+        setIsBooked(false);
+      } finally {
+        setIsCheckingBooking(false);
+      }
+    };
+
+    fetchEvent();
+    if (user) {
+      checkBookingStatus();
+    } else {
+      setIsCheckingBooking(false);
     }
-    bookEvent(event.id);
-    navigate(`/congratulations/${event.id}`);
+  }, [id, getEventById, user]);
+
+  const handleBookEvent = async () => {
+    if (!event || !user) return;
+    try {
+      setIsBooking(true);
+      await bookEvent(event.id);
+      setIsBooked(true);
+      toast.success('Event booked successfully!');
+      navigate(`/congratulations/${event.id}`);
+    } catch (err: any) {
+      console.error('Failed to book event:', err);
+      toast.error(err.message || 'Failed to book event');
+    } finally {
+      setIsBooking(false);
+    }
   };
-  return <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="h-80 overflow-hidden">
-        <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
+
+  if (isLoading || isCheckingBooking) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-      <div className="p-6">
-        <Link to="/" className="flex items-center gap-1 text-gray-600 hover:text-gray-800 mb-4">
-          <ArrowLeftIcon className="h-4 w-4" />
-          <span>Back to events</span>
-        </Link>
-        <div className="flex items-center gap-2 mb-3">
-          <TagIcon className="h-5 w-5 text-blue-500" />
-          <span className="text-blue-600 font-medium">{event.category}</span>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">{event.name}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="flex items-center gap-3">
-            <CalendarIcon className="h-6 w-6 text-gray-600" />
-            <div>
-              <p className="text-sm text-gray-500">Date</p>
-              <p className="font-medium">{formattedDate}</p>
+    );
+  }
+
+  if (error || !event) {
+    return <div className="text-red-600">{error || 'Event not found'}</div>;
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
+      >
+        <ArrowLeftIcon className="h-5 w-5" />
+        <span>Back</span>
+      </button>
+
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <img
+          src={event.fullImageUrl}
+          alt={event.title}
+          className="w-full h-96 object-cover"
+        />
+        
+        <div className="p-6">
+          <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
+          
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex items-center gap-2 text-gray-600">
+              <CalendarIcon className="h-5 w-5" />
+              <span>{new Date(event.eventDate).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <MapPinIcon className="h-5 w-5" />
+              <span>{event.venue}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <TagIcon className="h-5 w-5" />
+              <span>{event.categoryName}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <MapPinIcon className="h-6 w-6 text-gray-600" />
-            <div>
-              <p className="text-sm text-gray-500">Venue</p>
-              <p className="font-medium">{event.venue}</p>
-            </div>
+
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-3">
+              About this event
+            </h2>
+            <p className="text-gray-700">{event.description}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <DollarSignIcon className="h-6 w-6 text-gray-600" />
-            <div>
-              <p className="text-sm text-gray-500">Price</p>
-              <p className="font-medium">{formattedPrice}</p>
+
+          <div className="flex justify-between items-center">
+            <div className="text-2xl font-bold text-blue-600">
+              ${event.price.toFixed(2)}
             </div>
+            {user ? (
+              isBooked ? (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircleIcon className="h-6 w-6" />
+                  <span className="font-medium">You have booked this event</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleBookEvent}
+                  disabled={isBooking}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isBooking ? 'Booking...' : 'Book Now'}
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+              >
+                Login to Book
+              </button>
+            )}
           </div>
-        </div>
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-3">
-            About this event
-          </h2>
-          <p className="text-gray-700 leading-relaxed">{event.description}</p>
-        </div>
-        <div className="flex justify-between items-center">
-          {isEventBooked(event.id) ? <div className="bg-green-100 text-green-800 px-4 py-2 rounded-md">
-              You've already booked this event
-            </div> : <button onClick={handleBookEvent} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors duration-200">
-              Book Now
-            </button>}
-          <p className="text-xl font-bold">{formattedPrice}</p>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default EventDetailsPage;
