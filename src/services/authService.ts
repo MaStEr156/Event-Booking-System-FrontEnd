@@ -54,7 +54,7 @@ export interface RegisterResponse {
 const authService = {
   async login(email: string, password: string): Promise<LoginResponse> {
     console.log('Attempting login with:', { email });
-    const response = await axios.post(`${API_URL}/api/auth/login`, {
+    const response = await axios.post(`${API_URL}/auth/login`, {
       email,
       password
     }, {
@@ -80,7 +80,7 @@ const authService = {
   },
 
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    const response = await axios.post(`${API_URL}/api/auth/register`, data);
+    const response = await axios.post(`${API_URL}/auth/register`, data);
     return response.data;
   },
 
@@ -93,7 +93,7 @@ const authService = {
     }
 
     try {
-      const response = await axios.get(`${API_URL}/api/auth/get-user`, {
+      const response = await axios.get(`${API_URL}/auth/get-user`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -119,7 +119,7 @@ const authService = {
       if (!refreshToken) return;
 
       await axios.post(
-        `${API_URL}/api/auth/logout`,
+        `${API_URL}/auth/logout`,
         { refreshToken },
         {
           headers: {

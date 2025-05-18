@@ -302,7 +302,7 @@ const eventService = {
 
     try {
       await axios.post(
-        `${API_URL}/api/Booking/AddBooking`,
+        `${API_URL}/Booking/AddBooking`,
         { 
           EventId: eventId,
           BookingDate: new Date().toISOString()
