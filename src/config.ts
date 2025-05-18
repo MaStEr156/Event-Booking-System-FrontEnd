@@ -1,5 +1,5 @@
 // API Configuration
-export const API_URL = 'http://mybooksys.runasp.net';
+export const API_URL = '/api';
 
 // Other configuration constants can be added here
 export const APP_NAME = 'Event Booking System';
