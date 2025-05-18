@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useEvents } from '@/context/EventContext';
-import { useAuth } from '@/context/AuthContext';
 import EventCard from '@/components/EventCard';
 import { SearchIcon, FilterIcon, Loader2Icon } from 'lucide-react';
 
 const HomePage = () => {
-  const { events, bookEvent, isEventBooked, categories, loading, error } = useEvents();
-  const { user } = useAuth();
-  const navigate = useNavigate();
+  const { events, categories, loading, error } = useEvents();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
@@ -19,15 +15,6 @@ const HomePage = () => {
     const matchesCategory = categoryFilter === '' || event.categoryId === categoryFilter;
     return matchesSearch && matchesCategory;
   });
-
-  const handleBookEvent = (eventId: string) => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    bookEvent(eventId);
-    navigate(`/congratulations/${eventId}`);
-  };
 
   if (loading) {
     return (
@@ -101,8 +88,6 @@ const HomePage = () => {
             <EventCard
               key={event.id}
               event={event}
-              isBooked={isEventBooked(event.id)}
-              onBook={() => handleBookEvent(event.id)}
             />
           ))}
         </div>

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import eventService, { Booking } from '@/services/eventService';
 import { CalendarIcon, MapPinIcon, ArrowLeftIcon, TrashIcon } from 'lucide-react';
+import eventService from '@/services/eventService';
 import { toast } from 'react-hot-toast';
 
 interface UserBooking {

@@ -12,7 +12,6 @@ import EventDetailsPage from '@/pages/EventDetailsPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import CongratulationsPage from '@/pages/CongratulationsPage';
 import MyBookingsPage from '@/pages/MyBookingsPage';
-import PrivateRoute from '@/components/PrivateRoute';
 import AdminRoute from '@/components/AdminRoute';
 
 const App: React.FC = () => {

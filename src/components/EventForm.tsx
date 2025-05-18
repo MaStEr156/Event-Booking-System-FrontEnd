@@ -84,7 +84,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onClose }) => {
         Venue: venue,
         CategoryId: categoryId,
         Price: price,
-        Image: image // Only include image if it's a new event or if it was changed
+        Image: image as File // Type assertion since we check for null above
       };
 
       if (event) {

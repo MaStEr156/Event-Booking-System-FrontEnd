@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircleIcon, CalendarIcon, MapPinIcon } from 'lucide-react';
 import eventService, { Event } from '../services/eventService';

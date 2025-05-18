@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useEvents } from '@/context/EventContext';
 import { useAdmin } from '@/context/AdminContext';
 import eventService, { Event, Category } from '@/services/eventService';
-import { PlusIcon, EditIcon, TrashIcon, ListIcon, GridIcon, TagIcon, PencilIcon, ArchiveIcon } from 'lucide-react';
+import { PlusIcon, PencilIcon, TrashIcon, ArchiveIcon } from 'lucide-react';
 import EventForm from '@/components/EventForm';
 import CategoryForm from '@/components/CategoryForm';
 
@@ -17,7 +16,6 @@ const AdminDashboard = () => {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const navigate = useNavigate();
 
   const refreshCategories = async () => {
     try {

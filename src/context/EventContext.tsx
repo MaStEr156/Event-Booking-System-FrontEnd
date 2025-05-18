@@ -53,7 +53,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const isEventBooked = (eventId: string) => {
+  const isEventBooked = () => {
     // This is a placeholder - implement actual booking check logic
     return false;
   };
