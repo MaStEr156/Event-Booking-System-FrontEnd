@@ -49,7 +49,7 @@ export class Event implements IEvent {
       return this.imageUrl;
     }
     const cleanPath = this.imageUrl.replace(/^\/+/, '');
-    return `${API_URL}/${cleanPath}`;
+    return `http://mybooksys.runasp.net/${cleanPath}`;
   }
 }
 
