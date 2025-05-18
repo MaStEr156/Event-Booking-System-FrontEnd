@@ -1,7 +1,7 @@
 import api from './api';
 import axios from 'axios';
 
-const API_URL = 'https://localhost:7054';
+const API_URL = 'http://mybooksys.runasp.net';
 
 export interface IEvent {
   id: string;

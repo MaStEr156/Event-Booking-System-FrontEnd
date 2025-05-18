@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://localhost:7054/api';
+const API_URL = 'http://mybooksys.runasp.net/api';
 
 const api = axios.create({
   baseURL: API_URL,
