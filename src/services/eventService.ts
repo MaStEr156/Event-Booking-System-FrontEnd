@@ -1,7 +1,6 @@
 import api from './api';
 import axios from 'axios';
-
-const API_URL = '/api';
+import { API_URL } from '../config';
 
 export interface IEvent {
   id: string;
@@ -49,7 +48,7 @@ export class Event implements IEvent {
       return this.imageUrl;
     }
     const cleanPath = this.imageUrl.replace(/^\/+/, '');
-    return `http://mybooksys.runasp.net/${cleanPath}`;
+    return `https://mybooksys.runasp.net/${cleanPath}`;
   }
 }
 
